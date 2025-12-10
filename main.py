@@ -56,8 +56,7 @@ class PnlEntry(BaseModel):
     symbol: str
     pnl: float #added pnl entry model
 
-TRADES_DF = pd.read_csv("trades.csv") #big trades view
-PRICES_DF = pd.read_csv("prices.csv") #mini market for screener
+TRADES_DF = pd.read_csv("trades.csv")
 
 
 @app.get("/health") # first endpoint
@@ -131,39 +130,6 @@ def summarise_pnl(entries: List[PnlEntry]):
         "summary": summary,
     }
 
-@app.get("/screener")
-def screener(limit: int = 5, direction: str = "gainers"):
-   
-    
-   """" 
-    uses PRICES_DF with columns: symbol,prices, prev price
-    simple stock screene endpoint
-    calculates percentage change
-    ranks symbols by move
-    returns top N gainers or losers as json
-    """
-    #starts global prices dataframe
-   df = PRICES_DF.copy() #copied so it doesnt mutate the global data
-   
-   #avoids didivde by 0 or bad date
-   df = df[df["prev_price"] > 0]#sanity check to filter out the division under 0
-
-   #add a percentage change column, brain of screener here, compute % move for ticker
-   df["change_pct"] = (df["price"] - df["prev_price"]) / df["prev_price"] * 100
-
-   #decide how to sort: gainers vs losers
-   if direction == "losers":
-       ranked = df.sort_values("change_pct", ascending=True)
-   else:
-       #its gianers here
-       ranked = df.sort_values("change_pct", ascending=False)
-
-   result = ranked.head(limit)[["symbol", "price", "prev_price", "change_pct"]]
-   
-   return result.to_dict(orient="records")
-       
-
-   
 @app.get("/big-trades")
 def big_trades(min_qty: int = 100):
     #return trades where quantity >+ min_qty
@@ -174,6 +140,10 @@ def big_trades(min_qty: int = 100):
 
 @app.get("/dashboard", response_class=HTMLResponse)
 def dashboard(min_qty: int = 100):
+    # Build a small 'trader-style' dashboard:
+    # - current prices table
+    # - big trades table (qty >= min_qty)
+
     # Price table rows
     price_rows = ""
     for symbol, price in MOCK_PRICES.items():
@@ -195,23 +165,6 @@ def dashboard(min_qty: int = 100):
                 <td>{row['qty']}</td>
                 <td>£{row['price']}</td>
                 <td>£{notional:,.0f}</td>
-            </tr>
-        """
-
-    # Top movers using PRICES_DF (basic screener logic)
-    movers_df = PRICES_DF.copy()
-    movers_df = movers_df[movers_df["prev_price"] > 0]
-    movers_df["change_pct"] = (movers_df["price"] - movers_df["prev_price"]) / movers_df["prev_price"] * 100
-    movers_df = movers_df.sort_values("change_pct", ascending=False).head(5)
-
-    movers_rows = ""
-    for _, row in movers_df.iterrows():
-        direction_class = "move-up" if row["change_pct"] >= 0 else "move-down"
-        movers_rows += f"""
-            <tr>
-                <td class="symbol">{row['symbol']}</td>
-                <td>£{row['price']:.2f}</td>
-                <td class="{direction_class}">{row['change_pct']:.2f}%</td>
             </tr>
         """
 
@@ -238,7 +191,7 @@ def dashboard(min_qty: int = 100):
                 }}
                 .grid {{
                     display: grid;
-                    grid-template-columns: 1.1fr 1.1fr;
+                    grid-template-columns: 1fr 1.1fr;
                     gap: 1.5rem;
                     align-items: flex-start;
                 }}
@@ -255,9 +208,6 @@ def dashboard(min_qty: int = 100):
                     display: flex;
                     align-items: center;
                     justify-content: space-between;
-                }}
-                .panel-wide {{
-                    grid-column: 1 / -1; /* span full width */
                 }}
                 .tag {{
                     display: inline-block;
@@ -301,12 +251,6 @@ def dashboard(min_qty: int = 100):
                 .price {{
                     color: #4ade80;
                 }}
-                .move-up {{
-                    color: #22c55e;
-                }}
-                .move-down {{
-                    color: #f97373;
-                }}
                 .pill {{
                     display: inline-flex;
                     align-items: center;
@@ -345,7 +289,7 @@ def dashboard(min_qty: int = 100):
                             LIVE (mock)
                         </span>
                     </h2>
-                    <div class="sub">Backed by the <code>/prices/&lt;symbol&gt;</code> API.</div>
+                    <div class="sub">Backed by the <code>/price/&lt;symbol&gt;</code> API.</div>
                     <table>
                         <thead>
                             <tr>
@@ -381,30 +325,32 @@ def dashboard(min_qty: int = 100):
                         </tbody>
                     </table>
                 </div>
-
-                <div class="panel panel-wide">
-                    <h2>
-                        Top Movers
-                        <span class="tag">/screener</span>
-                    </h2>
-                    <div class="sub">
-                        Ranked by percentage move vs previous price.
-                    </div>
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Symbol</th>
-                                <th>Last Price</th>
-                                <th>Change %</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {movers_rows}
-                        </tbody>
-                    </table>
-                </div>
             </div>
         </body>
     </html>
     """
     return html
+
+
+
+
+
+
+
+
+    
+
+
+
+
+
+    
+
+
+
+
+
+
+
+
+    
