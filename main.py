@@ -330,27 +330,3 @@ def dashboard(min_qty: int = 100):
     </html>
     """
     return html
-
-
-
-
-
-
-
-
-    
-
-
-
-
-
-    
-
-
-
-
-
-
-
-
-    
